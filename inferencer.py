@@ -33,7 +33,17 @@ class InterleaveInferencer:
         self.vae_transform = vae_transform
         self.vit_transform = vit_transform
         self.new_token_ids = new_token_ids
-        
+        try:
+            self.device = next(self.model.parameters()).device
+        except StopIteration:
+            print("Warning: Model has no parameters. Attempting to use vae_model's device.")
+            try:
+                self.device = next(self.vae_model.parameters()).device
+            except StopIteration:
+                print("Warning: VAE model also has no parameters. Defaulting device to cuda if available, else cpu.")
+                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"InterleaveInferencer initialized with device: {self.device}")
+
     def init_gen_context(self): 
         gen_context = {
             'kv_lens': [0],
@@ -56,6 +66,7 @@ class InterleaveInferencer:
             tokenizer=self.tokenizer, 
             new_token_ids=self.new_token_ids,
         )
+        generation_input = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in generation_input.items()}
 
         past_key_values = self.model.forward_cache_update_text(past_key_values, **generation_input)        
         gen_context['kv_lens'] = kv_lens
@@ -82,6 +93,7 @@ class InterleaveInferencer:
                 transforms=self.vae_transform, 
                 new_token_ids=self.new_token_ids,
             )
+            generation_input = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in generation_input.items()}
             past_key_values = self.model.forward_cache_update_vae(self.vae_model, past_key_values, **generation_input)
         
         if vit:
@@ -93,6 +105,7 @@ class InterleaveInferencer:
                 transforms=self.vit_transform, 
                 new_token_ids=self.new_token_ids,
             )
+            generation_input = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in generation_input.items()}
             past_key_values = self.model.forward_cache_update_vit(past_key_values, **generation_input)
 
         gen_context['kv_lens'] = kv_lens
@@ -128,6 +141,7 @@ class InterleaveInferencer:
             image_sizes=[image_shape], 
             new_token_ids=self.new_token_ids,
         ) 
+        generation_input = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in generation_input.items()}
         
         # text cfg
         cfg_text_past_key_values = cfg_text_precontext['past_key_values']
@@ -138,6 +152,7 @@ class InterleaveInferencer:
             curr_rope=ropes_cfg, 
             image_sizes=[image_shape], 
         )
+        generation_input_cfg_text = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in generation_input_cfg_text.items()}
 
         # img cfg
         cfg_img_past_key_values = cfg_img_precontext['past_key_values']
@@ -148,6 +163,7 @@ class InterleaveInferencer:
             curr_rope=ropes_cfg, 
             image_sizes=[image_shape], 
         )
+        generation_input_cfg_img = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in generation_input_cfg_img.items()}
 
         unpacked_latent = self.model.generate_image(
             past_key_values=past_key_values,
@@ -196,6 +212,7 @@ class InterleaveInferencer:
         ropes = gen_context['ropes']
 
         generation_input = self.model.prepare_start_tokens(kv_lens, ropes, self.new_token_ids)
+        generation_input = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in generation_input.items()}
         unpacked_latent = self.model.generate_text(
             past_key_values=past_key_values,
             max_length=max_length,
