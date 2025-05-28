@@ -302,40 +302,123 @@ class BagelModelLoader:
             # Create transformers
             vae_transform = ImageTransform(1024, 512, 16)
             vit_transform = ImageTransform(980, 224, 14)
+            model_device_final_str = "cpu"
 
-            # Load model weights
-            model = load_checkpoint_and_dispatch(
-                model,
-                checkpoint=os.path.join(local_model_dir, "ema.safetensors"),
-                device_map="auto",
-                dtype=torch.bfloat16,
-                force_hooks=True,
-            ).eval()
-
-            # Create inferencer
-            inferencer = InterleaveInferencer(
-                model=model,
-                vae_model=vae_model,
-                tokenizer=tokenizer,
-                vae_transform=vae_transform,
-                vit_transform=vit_transform,
-                new_token_ids=new_token_ids,
-            )
-
-            # Wrap as model dictionary
-            model_dict = {
-                "model": model,
-                "inferencer": inferencer,
-                "tokenizer": tokenizer,
-                "vae_model": vae_model,
-                "vae_transform": vae_transform,
-                "vit_transform": vit_transform,
-                "config": config,
-                "model_path": local_model_dir,
-            }
-
-            print(f"Successfully loaded BAGEL model from {local_model_dir}")
-            return (model_dict,)
+            if is_df11_model:
+                vae_model, vae_config = None, None
+                potential_vae_paths = [
+                    os.path.join(local_model_dir, "vae", "ae.safetensors"),
+                    os.path.join(local_model_dir, "ae.safetensors"),
+                    common_vae_file,
+                ]
+                vae_loaded_path = None
+                for vae_path_to_try in potential_vae_paths:
+                    if os.path.exists(vae_path_to_try):
+                        try:
+                            vae_model, vae_config = load_ae(local_path=vae_path_to_try)
+                            if vae_model is not None and vae_config is not None:
+                                vae_loaded_path = vae_path_to_try
+                                break
+                        except Exception as e:
+                            print(f"Failed to load VAE from {vae_path_to_try}: {e}")
+                if not vae_loaded_path:
+                    raise FileNotFoundError(
+                        f"VAE model (ae.safetensors) could not be loaded from any of the expected paths: {potential_vae_paths}"
+                    )
+                config = BagelConfig(
+                    visual_gen=True,
+                    visual_und=True,
+                    llm_config=llm_config,
+                    vit_config=vit_config,
+                    vae_config=vae_config,
+                    vit_max_num_patch_per_side=70,
+                    connector_act="gelu_pytorch_tanh",
+                    latent_patch_size=2,
+                    max_latent_size=64,
+                )
+                with init_empty_weights():
+                    language_model = Qwen2ForCausalLM(llm_config)
+                    vit_model = SiglipVisionModel(vit_config)
+                    model = Bagel(language_model, vit_model, config)
+                    model.vit_model.vision_model.embeddings.convert_conv2d_to_linear(
+                        vit_config, meta=True
+                    )
+                tokenizer = Qwen2Tokenizer.from_pretrained(local_model_dir)
+                tokenizer, new_token_ids, _ = add_special_tokens(tokenizer)
+                vae_transform = ImageTransform(1024, 512, 16)
+                vit_transform = ImageTransform(980, 224, 14)
+                model = model.to(torch.bfloat16)
+                model.load_state_dict(
+                    {
+                        name: (
+                            torch.empty(param.shape, dtype=param.dtype, device="cpu")
+                            if param.device.type == "meta"
+                            else param
+                        )
+                        for name, param in model.state_dict().items()
+                    },
+                    assign=True,
+                )
+                model = DFloat11Model.from_pretrained(
+                    local_model_dir,
+                    bfloat16_model=model,
+                    device="cpu",
+                )
+                device_map = infer_auto_device_map(
+                    model,
+                    max_memory={0: "40GiB"},
+                    no_split_module_classes=[
+                        "Bagel",
+                        "Qwen2MoTDecoderLayer",
+                        "SiglipVisionModel",
+                    ],
+                )
+                same_device_modules = [
+                    "language_model.model.embed_tokens",
+                    "time_embedder",
+                    "latent_pos_embed",
+                    "vae2llm",
+                    "llm2vae",
+                    "connector",
+                    "vit_pos_embed",
+                ]
+                if torch.cuda.device_count() == 1:
+                    first_device = device_map.get(same_device_modules[0], "cuda:0")
+                    for k in same_device_modules:
+                        if k in device_map:
+                            device_map[k] = first_device
+                        else:
+                            device_map[k] = "cuda:0"
+                else:
+                    first_device = device_map.get(same_device_modules[0])
+                    for k in same_device_modules:
+                        if k in device_map:
+                            device_map[k] = first_device
+                model = dispatch_model(model, device_map=device_map, force_hooks=True)
+                model = model.eval()
+                inferencer = InterleaveInferencer(
+                    model=model,
+                    vae_model=vae_model,
+                    tokenizer=tokenizer,
+                    vae_transform=vae_transform,
+                    vit_transform=vit_transform,
+                    new_token_ids=new_token_ids,
+                )
+                model_dict = {
+                    "model": model,
+                    "inferencer": inferencer,
+                    "tokenizer": tokenizer,
+                    "vae_model": vae_model,
+                    "vae_transform": vae_transform,
+                    "vit_transform": vit_transform,
+                    "config": config,
+                    "model_path": local_model_dir,
+                    "model_repo_id": model_repo_id,
+                    "is_df11": is_df11_model,
+                    "device": "cuda" if torch.cuda.is_available() else "cpu",
+                }
+                print(f"Successfully loaded BAGEL DF11 model from {local_model_dir}")
+                return (model_dict,)
 
         except Exception as e:
             print(f"Error loading BAGEL model: {e}")
