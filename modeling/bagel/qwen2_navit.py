@@ -34,31 +34,10 @@ from modeling.qwen2.modeling_qwen2 import (
 from modeling.qwen2.configuration_qwen2 import Qwen2Config as _Qwen2Config
 
 
-# Store the original flex_attention for lazy compilation
-_original_flex_attention = flex_attention
-_compiled_flex_attention = None
-
-
-def get_compiled_flex_attention():
-    """Get compiled flex_attention with error handling and lazy loading"""
-    global _compiled_flex_attention
-    if _compiled_flex_attention is None:
-        try:
-            torch._dynamo.config.cache_size_limit = 512
-            torch._dynamo.config.accumulated_cache_size_limit = 4096
-            _compiled_flex_attention = torch.compile(_original_flex_attention)
-            print("Successfully compiled flex_attention")
-        except Exception as e:
-            print(
-                f"Warning: Failed to compile flex_attention, falling back to original implementation: {e}"
-            )
-            _compiled_flex_attention = _original_flex_attention
-    return _compiled_flex_attention
-
-
-# Use a function wrapper to delay compilation until actual use
-def flex_attention(*args, **kwargs):
-    return get_compiled_flex_attention()(*args, **kwargs)
+torch._dynamo.config.cache_size_limit = 512
+torch._dynamo.config.accumulated_cache_size_limit = 4096
+# flex_attention = torch.compile(flex_attention) # , dynamic=True, mode='max-autotune'
+flex_attention = torch.compile(flex_attention)
 
 
 class Qwen2Config(_Qwen2Config):

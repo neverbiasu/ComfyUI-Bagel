@@ -7,6 +7,11 @@ import subprocess
 from typing import Dict, Tuple, Optional, Any, Union
 from PIL import Image
 from folder_paths import folder_names_and_paths
+from accelerate import (
+    infer_auto_device_map,
+    load_checkpoint_and_dispatch,
+    init_empty_weights,
+)
 
 # Add current directory to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,11 +19,6 @@ sys.path.insert(0, current_dir)
 
 # Import BAGEL related modules
 try:
-    from accelerate import (
-        infer_auto_device_map,
-        load_checkpoint_and_dispatch,
-        init_empty_weights,
-    )
     from data.data_utils import add_special_tokens, pil_img2rgb
     from data.transforms import ImageTransform
     from inferencer import InterleaveInferencer
@@ -35,7 +35,9 @@ try:
     from modeling.qwen2 import Qwen2Tokenizer
 except ImportError as e:
     print(f"Error importing BAGEL modules: {e}")
-    print("Please ensure BAGEL model files are properly installed.")
+    print(
+        "Please ensure BAGEL model files are properly installed and accessible in the Python path."
+    )
 
 # Register the BAGEL model folder
 models_dir = os.path.join(os.getcwd(), "models")
@@ -256,9 +258,11 @@ class BagelModelLoader:
                 )
 
             # Load configuration files
-            llm_config = Qwen2Config.from_json_file(
-                os.path.join(local_model_dir, "llm_config.json")
-            )
+            try:
+                llm_config = Qwen2Config.from_json_file("path/to/llm_config.json")
+            except Exception as e:
+                print(f"Error loading Qwen2Config: {e}")
+                raise
             llm_config.qk_norm = True
             llm_config.tie_word_embeddings = False
             llm_config.layer_module = "Qwen2MoTDecoderLayer"
