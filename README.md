@@ -16,11 +16,18 @@ BAGEL is an open-source multimodal foundation model with 7B active parameters (1
 - **Image Editing**: Edit existing images based on textual descriptions  
 - **Image Understanding**: Perform Q&A and analysis on images
 - **Reasoning Process Display**: Optionally display the model's reasoning process
+- **DFloat11 Quantized Model Support**: Support for DFloat11 quantized version that requires only ~22GB VRAM
 
 ## Installation
 
-### 1. Download Model
-The BAGEL-7B-MoT model will be automatically downloaded to `models/bagel/BAGEL-7B-MoT/` when first used. You can also manually download it:
+### 1. Model Selection and Download
+The ComfyUI-Bagel node now supports automatic model selection via dropdown:
+- **ByteDance-Seed/BAGEL-7B-MoT**: Original standard model (~80GB VRAM recommended)
+- **DFloat11/BAGEL-7B-MoT-DF11**: Quantized model (~22GB VRAM, single 24GB GPU compatible)
+
+Models will be automatically downloaded to `models/bagel/` when first selected. You can also manually download them:
+
+#### Standard Model
 ```bash
 # Clone model using git lfs (recommended)
 git lfs install
@@ -31,10 +38,24 @@ pip install huggingface_hub
 python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='ByteDance-Seed/BAGEL-7B-MoT', local_dir='models/bagel/BAGEL-7B-MoT')"
 ```
 
+#### DFloat11 Quantized Model (Recommended for single GPU)
+```bash
+# Clone DFloat11 quantized model
+git clone https://huggingface.co/DFloat11/BAGEL-7B-MoT-DF11 models/bagel/BAGEL-7B-MoT-DF11
+
+# Or use huggingface_hub
+python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='DFloat11/BAGEL-7B-MoT-DF11', local_dir='models/bagel/BAGEL-7B-MoT-DF11')"
+```
+
 ### 2. Install Dependencies
-Install dependencies:
+Install the required dependencies:
 ```bash
 pip install -r requirements.txt
+```
+
+For DFloat11 quantized model support, also install:
+```bash
+pip install dfloat11
 ```
 
 ### 3. Restart ComfyUI
@@ -53,6 +74,16 @@ Edit existing images based on textual descriptions, supporting local modificatio
 ### Image Understanding Workflow
 ![image understanding workflow](example_workflows/bagel_image_understanding.png)
 Analyze and answer questions about image content, suitable for content understanding and information extraction.
+
+## Performance Comparison
+
+| Metric | BAGEL-7B-MoT (Standard Model) | BAGEL-7B-MoT (DFloat11 Quantized Model) |
+|--------|-------------------------------|-----------------------------------------|
+| Model Size | 29.21 GB | 19.89 GB |
+| Peak GPU Memory (1024x1024 image generation) | 30.07 GB | 21.76 GB |
+| Generation Time (on an RTX4090 GPU) | 482.95 seconds | 154.39 seconds |
+
+DFloat11 Quantized Model significantly reduces VRAM requirements and speeds up generation time, making it ideal for single GPU setups.
 
 ## Related Links
 
