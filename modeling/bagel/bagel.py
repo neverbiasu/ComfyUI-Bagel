@@ -13,6 +13,8 @@ from torch.nn.attention.flex_attention import create_block_mask
 from transformers.configuration_utils import PretrainedConfig
 from transformers.modeling_utils import PreTrainedModel
 
+from typing import List, Tuple, Optional, Any 
+
 from data.data_utils import (
     create_sparse_mask, 
     get_flattened_position_ids_extrapolate, 
@@ -238,11 +240,13 @@ class Bagel(PreTrainedModel):
         curr = 0
         newlens, new_rope = list(), list()
         for prompt, curr_kvlen, curr_position_id in zip(prompts, curr_kvlens, curr_rope):
+
             packed_key_value_indexes.extend(range(curr, curr + curr_kvlen))
             curr += curr_kvlen
 
-            text_ids = tokenizer.encode(prompt)
-            text_ids = [new_token_ids['bos_token_id']] + text_ids + [new_token_ids['eos_token_id']]
+            text_ids = tokenizer.encode(prompt)          
+            text_ids = [new_token_ids['bos_token_id']] + text_ids + [new_token_ids['eos_token_id']]          
+            
             text_token_lens.append(len(text_ids))
             packed_text_ids.extend(text_ids)
             packed_text_position_ids.extend(range(curr_position_id, curr_position_id + len(text_ids)))
@@ -250,7 +254,7 @@ class Bagel(PreTrainedModel):
             newlens.append(curr_kvlen + len(text_ids))
             new_rope.append(curr_position_id + len(text_ids))
             curr += len(text_ids)
-
+        
         generation_input = {
             "text_token_lens": torch.tensor(text_token_lens, dtype=torch.int),
             "packed_text_ids": torch.tensor(packed_text_ids, dtype=torch.long),
@@ -260,6 +264,13 @@ class Bagel(PreTrainedModel):
             "key_values_lens": torch.tensor(curr_kvlens, dtype=torch.int),
         }
 
+        # ---- ADD THIS (after generation_input is formed) ----
+        print(f"[Bagel.prepare_prompts] Final generation_input['packed_text_ids']: {generation_input['packed_text_ids']}")
+        # You can also decode this to see the full sequence with special tokens
+        full_decoded_prompt = tokenizer.decode(generation_input['packed_text_ids'].tolist())
+        print(f"[Bagel.prepare_prompts] Fully decoded packed_text_ids: '{full_decoded_prompt}'")
+        # ---- END ADD ----
+        
         return generation_input, newlens, new_rope
 
     @torch.no_grad
@@ -669,6 +680,7 @@ class Bagel(PreTrainedModel):
         cfg_img_key_values_lens: Optional[torch.IntTensor] = None,
         cfg_img_packed_key_value_indexes: Optional[torch.LongTensor] = None,
         cfg_type: str = "parallel",
+        pbar: Optional[Any] = None,
     ):
         x_t = packed_init_noises
 
@@ -678,7 +690,9 @@ class Bagel(PreTrainedModel):
         timesteps = timesteps[:-1]
 
         for i, t in enumerate(timesteps):
-
+            if pbar:
+                pbar.update(1)
+                
             timestep = torch.tensor([t] * x_t.shape[0], device=x_t.device)
             if t > cfg_interval[0] and t <= cfg_interval[1]:
                 cfg_text_scale_ = cfg_text_scale
