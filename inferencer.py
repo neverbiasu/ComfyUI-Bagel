@@ -124,6 +124,7 @@ class InterleaveInferencer:
         cfg_renorm_type="global",
         num_timesteps=50,
         timestep_shift=3.0,
+        pbar: Optional[Any] = None,
     ):
         # print(cfg_renorm_type)
         past_key_values = gen_context["past_key_values"]
@@ -167,6 +168,7 @@ class InterleaveInferencer:
             cfg_renorm_min=cfg_renorm_min,
             cfg_renorm_type=cfg_renorm_type,
             timestep_shift=timestep_shift,
+            pbar=pbar,
             **generation_input,
             cfg_text_packed_position_ids=generation_input_cfg_text[
                 "cfg_packed_position_ids"
@@ -263,6 +265,7 @@ class InterleaveInferencer:
         cfg_renorm_min=0.0,
         cfg_renorm_type="global",
         image_shapes=(1024, 1024),
+        pbar: Optional[Any] = None,
     ) -> List[Union[str, Image.Image]]:
 
         output_list = []
@@ -335,6 +338,7 @@ class InterleaveInferencer:
                     num_timesteps=num_timesteps,
                     cfg_renorm_min=cfg_renorm_min,
                     cfg_renorm_type=cfg_renorm_type,
+                    pbar=pbar,
                 )
 
                 output_list.append(img)
@@ -342,7 +346,11 @@ class InterleaveInferencer:
         return output_list
 
     def __call__(
-        self, image: Optional[Image.Image] = None, text: Optional[str] = None, **kargs
+        self, 
+        image: Optional[Image.Image] = None, 
+        text: Optional[str] = None, 
+        pbar: Optional[Any] = None,
+        **kargs
     ) -> Dict[str, Any]:
         output_dict = {"image": None, "text": None}
 
@@ -356,7 +364,7 @@ class InterleaveInferencer:
         if text is not None:
             input_list.append(text)
 
-        output_list = self.interleave_inference(input_list, **kargs)
+        output_list = self.interleave_inference(input_list, pbar=pbar, **kargs)
 
         for i in output_list:
             if isinstance(i, Image.Image):

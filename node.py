@@ -7,6 +7,7 @@ import subprocess
 from typing import Dict, Tuple, Optional, Any, Union
 from PIL import Image
 from folder_paths import folder_names_and_paths, models_dir as comfy_models_dir
+from comfy.utils import ProgressBar
 
 # Add current directory to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -680,8 +681,13 @@ class BagelTextToImage:
                 "image_shapes": image_shapes,
             }
 
-            # Call inferencer
-            result = inferencer(text=prompt, think=show_thinking, **inference_hyper)
+            # Initialize ProgressBar
+            # The loop in Bagel.generate_image runs for (num_timesteps - 1) iterations
+            actual_iterations = num_timesteps - 1 if num_timesteps > 0 else 0
+            pbar = ProgressBar(actual_iterations)
+
+            # Call inferencer, passing pbar
+            result = inferencer(text=prompt, think=show_thinking, pbar=pbar, **inference_hyper)
 
             # Convert image format
             pil_image = result["image"]
@@ -919,9 +925,13 @@ class BagelImageEdit:
                 "cfg_renorm_type": cfg_renorm_type,
             }
 
-            # Call inferencer
+            # Initialize ProgressBar
+            actual_iterations = num_timesteps - 1 if num_timesteps > 0 else 0
+            pbar = ProgressBar(actual_iterations)
+
+            # Call inferencer, passing pbar
             result = inferencer(
-                image=pil_image, text=prompt, think=show_thinking, **inference_hyper
+                image=pil_image, text=prompt, think=show_thinking, pbar=pbar, **inference_hyper
             )
 
             # Convert image format
