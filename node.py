@@ -6,7 +6,7 @@ import random
 import subprocess
 from typing import Dict, Tuple, Optional, Any, Union
 from PIL import Image
-from folder_paths import folder_names_and_paths
+from folder_paths import folder_names_and_paths, models_dir as comfy_models_dir
 
 # Add current directory to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -18,6 +18,7 @@ try:
         infer_auto_device_map,
         load_checkpoint_and_dispatch,
         init_empty_weights,
+        dispatch_model,
     )
     from data.data_utils import add_special_tokens, pil_img2rgb
     from data.transforms import ImageTransform
@@ -37,10 +38,18 @@ except ImportError as e:
     print(f"Error importing BAGEL modules: {e}")
     print("Please ensure BAGEL model files are properly installed.")
 
+try:
+    from dfloat11 import DFloat11Model
+except ImportError:
+    print("DFloat11Model not found. DFloat11 support will be unavailable.")
+    print(
+        "Please install DFloat11 if you intend to use DFloat11 models: pip install dfloat11"
+    )
+    DFloat11Model = None
+
 # Register the BAGEL model folder
-models_dir = os.path.join(os.getcwd(), "models")
 folder_names_and_paths["bagel"] = (
-    [os.path.join(models_dir, "bagel")],
+    [os.path.join(comfy_models_dir, "bagel")],
     [".json", ".safetensors"],
 )
 
@@ -140,26 +149,34 @@ def download_model_with_hf_hub(
         return None
 
 
-def check_model_files(model_path: str) -> bool:
+def check_model_files(model_path: str, is_df11_model: bool) -> bool:
     """
-    Check if all required model files exist
+    Check if core model configuration files exist.
+    VAE and main weights (ema.safetensors for standard) are checked separately during load.
 
     Args:
         model_path: Path to the model directory
+        is_df11_model: Boolean indicating if the model is DFloat11
 
     Returns:
-        True if all files exist, False otherwise
+        True if core config files exist, False otherwise
     """
     required_files = [
         "llm_config.json",
         "vit_config.json",
-        "ae.safetensors",
-        "ema.safetensors",
     ]
 
-    for file in required_files:
-        if not os.path.exists(os.path.join(model_path, file)):
+    # DFloat11 models do not have ema.safetensors in their root.
+    # Standard models expect ema.safetensors.
+    # VAE presence is checked more robustly during the loading process itself.
+    if not is_df11_model:
+        required_files.append("ema.safetensors")
+
+    for file_name in required_files:
+        if not os.path.exists(os.path.join(model_path, file_name)):
+            print(f"Missing required model file: {os.path.join(model_path, file_name)}")
             return False
+
     return True
 
 
@@ -184,16 +201,18 @@ def tensor_to_pil(tensor: torch.Tensor) -> Image.Image:
 class BagelModelLoader:
     """BAGEL Model Loader Node"""
 
+    SUPPORTED_MODEL_REPOS = [
+        "ByteDance-Seed/BAGEL-7B-MoT",  # Standard BAGEL
+        "DFloat11/BAGEL-7B-MoT-DF11",  # DFloat11 Quantized
+    ]
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "model_path": (
-                    "STRING",
-                    {
-                        "default": "ByteDance-Seed/BAGEL-7B-MoT",
-                        "tooltip": "Hugging Face model repo name or local path",
-                    },
+                "model_repo_id": (
+                    cls.SUPPORTED_MODEL_REPOS,
+                    {"default": cls.SUPPORTED_MODEL_REPOS[0]},
                 ),
             }
         }
@@ -204,53 +223,56 @@ class BagelModelLoader:
     CATEGORY = "BAGEL/Core"
 
     @classmethod
-    def VALIDATE_INPUTS(cls, model_path):
+    def VALIDATE_INPUTS(cls, model_repo_id):
         """Validate input parameters"""
-        if not isinstance(model_path, str) or not model_path.strip():
-            return "Model path must be a non-empty string"
+        if model_repo_id not in cls.SUPPORTED_MODEL_REPOS:
+            return f"Unsupported model_repo_id: {model_repo_id}. Supported: {cls.SUPPORTED_MODEL_REPOS}"
+
+        if "DFloat11" in model_repo_id and DFloat11Model is None:
+            return "DFloat11 model selected, but DFloat11Model library is not installed or failed to import. Please install it: pip install dfloat11"
 
         return True
 
-    def load_model(self, model_path: str) -> Tuple[Dict[str, Any]]:
+    def load_model(self, model_repo_id: str) -> Tuple[Dict[str, Any]]:
         """
         Load BAGEL model and its components. Automatically download the model if not found.
 
         Args:
-            model_path: URL to the Hugging Face model repository
-
+            model_repo_id: Hugging Face model repository ID (e.g., "ByteDance-Seed/BAGEL-7B-MoT" or "DFloat11/BAGEL-7B-MoT-DF11")
         Returns:
             Dictionary containing all model components
         """
         try:
-            # Define base model directory
-            base_model_dir = os.path.join(os.getcwd(), "models", "bagel")
+            is_df11_model = model_repo_id == "DFloat11/BAGEL-7B-MoT-DF11"
+            is_standard_model = model_repo_id == "ByteDance-Seed/BAGEL-7B-MoT"
+            base_repo_dir = os.path.join(comfy_models_dir, "bagel")
+            repo_name_segment = model_repo_id.split("/")[-1]
+            local_model_dir = os.path.join(base_repo_dir, repo_name_segment)
 
-            # Extract repo name from model_path for the subdirectory
-            repo_name = model_path.split("/")[-1] if "/" in model_path else model_path
-            local_model_dir = os.path.join(base_model_dir, repo_name)
-
+            common_vae_dir = os.path.join(comfy_models_dir, "vae")
+            common_vae_file = os.path.join(common_vae_dir, "ae.safetensors")
             # Check if model exists locally, if not, download it
             if not os.path.exists(local_model_dir) or not check_model_files(
-                local_model_dir
+                local_model_dir, is_df11_model
             ):
                 print(
-                    f"Model not found locally. Attempting to download from {model_path}..."
+                    f"Core model files not found or incomplete for {model_repo_id} at {local_model_dir}. Attempting download..."
                 )
 
                 # Attempt to download using huggingface_hub
                 downloaded_path = download_model_with_hf_hub(
-                    local_model_dir, repo_id=model_path
+                    local_model_dir, repo_id=model_repo_id
                 )
                 if not downloaded_path:
                     raise FileNotFoundError(
                         f"Failed to download BAGEL model. Please manually download it from "
-                        f"{model_path} and place it in {local_model_dir}"
+                        f"{model_repo_id} and place it in {local_model_dir}"
                     )
 
                 print(f"Successfully downloaded BAGEL model to {local_model_dir}")
 
             # Final check that all required files exist
-            if not check_model_files(local_model_dir):
+            if not check_model_files(local_model_dir, is_df11_model):
                 raise FileNotFoundError(
                     f"Required model files missing in {local_model_dir}"
                 )
@@ -269,62 +291,28 @@ class BagelModelLoader:
             vit_config.rope = False
             vit_config.num_hidden_layers -= 1
 
-            vae_model, vae_config = load_ae(
-                local_path=os.path.join(local_model_dir, "ae.safetensors")
-            )
-
-            # Create BAGEL configuration
-            config = BagelConfig(
-                visual_gen=True,
-                visual_und=True,
-                llm_config=llm_config,
-                vit_config=vit_config,
-                vae_config=vae_config,
-                vit_max_num_patch_per_side=70,
-                connector_act="gelu_pytorch_tanh",
-                latent_patch_size=2,
-                max_latent_size=64,
-            )
-
-            # Initialize model
-            with init_empty_weights():
-                language_model = Qwen2ForCausalLM(llm_config)
-                vit_model = SiglipVisionModel(vit_config)
-                model = Bagel(language_model, vit_model, config)
-                model.vit_model.vision_model.embeddings.convert_conv2d_to_linear(
-                    vit_config, meta=True
+            vae_model, vae_config = None, None
+            potential_vae_paths = [
+                os.path.join(local_model_dir, "vae", "ae.safetensors"),
+                os.path.join(local_model_dir, "ae.safetensors"),
+                common_vae_file,
+            ]
+            vae_loaded_path = None
+            for vae_path_to_try in potential_vae_paths:
+                if os.path.exists(vae_path_to_try):
+                    try:
+                        vae_model, vae_config = load_ae(local_path=vae_path_to_try)
+                        if vae_model is not None and vae_config is not None:
+                            vae_loaded_path = vae_path_to_try
+                            break
+                    except Exception as e:
+                        print(f"Failed to load VAE from {vae_path_to_try}: {e}")
+            if not vae_loaded_path:
+                raise FileNotFoundError(
+                    f"VAE model (ae.safetensors) could not be loaded from any of the expected paths: {potential_vae_paths}"
                 )
 
-            # Load tokenizer
-            tokenizer = Qwen2Tokenizer.from_pretrained(local_model_dir)
-            tokenizer, new_token_ids, _ = add_special_tokens(tokenizer)
-
-            # Create transformers
-            vae_transform = ImageTransform(1024, 512, 16)
-            vit_transform = ImageTransform(980, 224, 14)
-            model_device_final_str = "cpu"
-
             if is_df11_model:
-                vae_model, vae_config = None, None
-                potential_vae_paths = [
-                    os.path.join(local_model_dir, "vae", "ae.safetensors"),
-                    os.path.join(local_model_dir, "ae.safetensors"),
-                    common_vae_file,
-                ]
-                vae_loaded_path = None
-                for vae_path_to_try in potential_vae_paths:
-                    if os.path.exists(vae_path_to_try):
-                        try:
-                            vae_model, vae_config = load_ae(local_path=vae_path_to_try)
-                            if vae_model is not None and vae_config is not None:
-                                vae_loaded_path = vae_path_to_try
-                                break
-                        except Exception as e:
-                            print(f"Failed to load VAE from {vae_path_to_try}: {e}")
-                if not vae_loaded_path:
-                    raise FileNotFoundError(
-                        f"VAE model (ae.safetensors) could not be loaded from any of the expected paths: {potential_vae_paths}"
-                    )
                 config = BagelConfig(
                     visual_gen=True,
                     visual_und=True,
@@ -418,6 +406,70 @@ class BagelModelLoader:
                     "device": "cuda" if torch.cuda.is_available() else "cpu",
                 }
                 print(f"Successfully loaded BAGEL DF11 model from {local_model_dir}")
+                return (model_dict,)
+            else:
+                # Create BAGEL configuration
+                config = BagelConfig(
+                    visual_gen=True,
+                    visual_und=True,
+                    llm_config=llm_config,
+                    vit_config=vit_config,
+                    vae_config=vae_config,
+                    vit_max_num_patch_per_side=70,
+                    connector_act="gelu_pytorch_tanh",
+                    latent_patch_size=2,
+                    max_latent_size=64,
+                )
+
+                # Initialize model
+                with init_empty_weights():
+                    language_model = Qwen2ForCausalLM(llm_config)
+                    vit_model = SiglipVisionModel(vit_config)
+                    model = Bagel(language_model, vit_model, config)
+                    model.vit_model.vision_model.embeddings.convert_conv2d_to_linear(
+                        vit_config, meta=True
+                    )
+
+                # Load tokenizer
+                tokenizer = Qwen2Tokenizer.from_pretrained(local_model_dir)
+                tokenizer, new_token_ids, _ = add_special_tokens(tokenizer)
+
+                # Create transformers
+                vae_transform = ImageTransform(1024, 512, 16)
+                vit_transform = ImageTransform(980, 224, 14)
+                model_device_final_str = "cpu"
+
+                model = load_checkpoint_and_dispatch(
+                    model,
+                    checkpoint=os.path.join(local_model_dir, "ema.safetensors"),
+                    device_map="auto",
+                    dtype=torch.bfloat16,
+                    force_hooks=True,
+                ).eval()
+
+                # Create inferencer
+                inferencer = InterleaveInferencer(
+                    model=model,
+                    vae_model=vae_model,
+                    tokenizer=tokenizer,
+                    vae_transform=vae_transform,
+                    vit_transform=vit_transform,
+                    new_token_ids=new_token_ids,
+                )
+
+                # Wrap as model dictionary
+                model_dict = {
+                    "model": model,
+                    "inferencer": inferencer,
+                    "tokenizer": tokenizer,
+                    "vae_model": vae_model,
+                    "vae_transform": vae_transform,
+                    "vit_transform": vit_transform,
+                    "config": config,
+                    "model_path": local_model_dir,
+                }
+
+                print(f"Successfully loaded BAGEL model from {local_model_dir}")
                 return (model_dict,)
 
         except Exception as e:
