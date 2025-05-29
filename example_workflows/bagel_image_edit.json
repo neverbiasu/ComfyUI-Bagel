@@ -1,8 +1,8 @@
 {
   "id": "3fa96181-e113-4145-ab50-238e8d4aa26b",
   "revision": 0,
-  "last_node_id": 14,
-  "last_link_id": 13,
+  "last_node_id": 15,
+  "last_link_id": 14,
   "nodes": [
     {
       "id": 13,
@@ -53,7 +53,7 @@
           "label": "model",
           "name": "model",
           "type": "BAGEL_MODEL",
-          "link": 10
+          "link": 14
         },
         {
           "label": "image",
@@ -105,40 +105,6 @@
       ]
     },
     {
-      "id": 10,
-      "type": "BagelModelLoader",
-      "pos": [
-        50,
-        80
-      ],
-      "size": [
-        315,
-        106
-      ],
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "model",
-          "name": "model",
-          "type": "BAGEL_MODEL",
-          "links": [
-            10
-          ]
-        }
-      ],
-      "properties": {
-        "aux_id": "neverbiasu/ComfyUI-Bagel",
-        "ver": "4bb49e5232604e4838463f130b3ba7026e428c1d",
-        "Node name for S&R": "BagelModelLoader"
-      },
-      "widgets_values": [
-        "ByteDance-Seed/BAGEL-7B-MoT"
-      ]
-    },
-    {
       "id": 12,
       "type": "LoadImage",
       "pos": [
@@ -150,7 +116,7 @@
         314
       ],
       "flags": {},
-      "order": 1,
+      "order": 0,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -216,19 +182,45 @@
         "Node name for S&R": "ShowText|pysssss"
       },
       "widgets_values": [
-        "<think>\nThe user wants the image to depict the same person in a modern subway setting, reading a newspaper. The red outfit and poodle pin should remain consistent, but the background should change to a subway environment with modern elements like subway seating and signage. The pose should reflect reading, with the newspaper held in hand.\n</think>"
+        "<think>\nThe user wants the image to depict the same person in a modern subway setting, reading a newspaper. The red outfit and poodle pin should remain consistent, while the background changes to a subway environment with a bench and subway signage. The pose should reflect quiet reading.\n</think>"
+      ]
+    },
+    {
+      "id": 15,
+      "type": "BagelModelLoader",
+      "pos": [
+        50,
+        80
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "label": "model",
+          "name": "model",
+          "type": "BAGEL_MODEL",
+          "links": [
+            14
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "neverbiasu/ComfyUI-Bagel",
+        "ver": "7c8172cd6a319dbd7b120e2a51b2d597550af7d2",
+        "Node name for S&R": "BagelModelLoader"
+      },
+      "widgets_values": [
+        "DFloat11/BAGEL-7B-MoT-DF11"
       ]
     }
   ],
   "links": [
-    [
-      10,
-      10,
-      0,
-      11,
-      0,
-      "BAGEL_MODEL"
-    ],
     [
       11,
       12,
@@ -252,16 +244,24 @@
       14,
       0,
       "STRING"
+    ],
+    [
+      14,
+      15,
+      0,
+      11,
+      0,
+      "BAGEL_MODEL"
     ]
   ],
   "groups": [],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.8769226950000005,
+      "scale": 0.7972024500000005,
       "offset": [
-        293.2523963582529,
-        20.623319534561208
+        314.6055329170149,
+        -0.926144800855802
       ]
     },
     "frontendVersion": "1.17.11",

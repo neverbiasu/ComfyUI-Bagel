@@ -5,40 +5,6 @@
   "last_link_id": 3,
   "nodes": [
     {
-      "id": 1,
-      "type": "BagelModelLoader",
-      "pos": [
-        100,
-        130
-      ],
-      "size": [
-        315,
-        58
-      ],
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "model",
-          "name": "model",
-          "type": "BAGEL_MODEL",
-          "links": [
-            1
-          ]
-        }
-      ],
-      "properties": {
-        "aux_id": "neverbiasu/ComfyUI-Bagel",
-        "ver": "4bb49e5232604e4838463f130b3ba7026e428c1d",
-        "Node name for S&R": "BagelModelLoader"
-      },
-      "widgets_values": [
-        "ByteDance-Seed/BAGEL-7B-MoT"
-      ]
-    },
-    {
       "id": 3,
       "type": "LoadImage",
       "pos": [
@@ -50,7 +16,7 @@
         314
       ],
       "flags": {},
-      "order": 1,
+      "order": 0,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -77,6 +43,80 @@
       "widgets_values": [
         "meme.jpg",
         "image"
+      ]
+    },
+    {
+      "id": 1,
+      "type": "BagelModelLoader",
+      "pos": [
+        100,
+        130
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "label": "model",
+          "name": "model",
+          "type": "BAGEL_MODEL",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "neverbiasu/ComfyUI-Bagel",
+        "ver": "4bb49e5232604e4838463f130b3ba7026e428c1d",
+        "Node name for S&R": "BagelModelLoader"
+      },
+      "widgets_values": [
+        "DFloat11/BAGEL-7B-MoT-DF11"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "ShowText|pysssss",
+      "pos": [
+        1015,
+        130
+      ],
+      "size": [
+        253.62852478027344,
+        331.75177001953125
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "text",
+          "name": "text",
+          "type": "STRING",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "label": "STRING",
+          "name": "STRING",
+          "shape": 6,
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-custom-scripts",
+        "ver": "1.2.5",
+        "Node name for S&R": "ShowText|pysssss"
+      },
+      "widgets_values": [
+        "The humor in this meme comes from the exaggerated change in handwriting style over the course of an exam. The first two pages show neat, legible handwriting, suggesting a calm and focused start to the exam. However, as the meme progresses to the middle and last pages, the handwriting becomes increasingly messy and difficult to read, symbolizing the stress and anxiety that often builds up as the exam progresses. The final page, resembling an electrocardiogram (ECG) reading, humorously represents the extreme stress and possibly even the physical symptoms of exam anxiety. The meme plays on the common experience of feeling more and more overwhelmed and stressed as an exam progresses."
       ]
     },
     {
@@ -123,7 +163,7 @@
         "Node name for S&R": "BagelImageUnderstanding"
       },
       "widgets_values": [
-        "Can someone explain what's funny about this meme?",
+        "Can someone explain what's funny about this meme??",
         false,
         false,
         0.3,
@@ -132,46 +172,6 @@
           false,
           true
         ]
-      ]
-    },
-    {
-      "id": 4,
-      "type": "ShowText|pysssss",
-      "pos": [
-        1015,
-        130
-      ],
-      "size": [
-        310.853515625,
-        213.56993103027344
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "text",
-          "name": "text",
-          "type": "STRING",
-          "link": 3
-        }
-      ],
-      "outputs": [
-        {
-          "label": "STRING",
-          "name": "STRING",
-          "shape": 6,
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-custom-scripts",
-        "ver": "1.2.5",
-        "Node name for S&R": "ShowText|pysssss"
-      },
-      "widgets_values": [
-        "The humor in this meme comes from the exaggerated change in handwriting over the course of an exam. The first two pages show neat, legible handwriting, suggesting the student is taking their time and writing clearly. However, the middle pages show a significant deterioration in handwriting, with letters becoming increasingly difficult to read. The final two pages are completely illegible, resembling a chaotic scribble. This progression humorously illustrates the stress and anxiety that can cause a student's handwriting to deteriorate dramatically as the exam progresses."
       ]
     }
   ],
@@ -205,10 +205,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.9646149645000006,
+      "scale": 0.8769226950000005,
       "offset": [
-        269.73612454793334,
-        59.062556212542205
+        199.3271554533947,
+        10.543933112705858
       ]
     },
     "frontendVersion": "1.17.11",

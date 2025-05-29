@@ -1,8 +1,8 @@
 {
   "id": "4d670fa5-e222-4474-b3e5-6c3f211659a8",
   "revision": 0,
-  "last_node_id": 5,
-  "last_link_id": 6,
+  "last_node_id": 7,
+  "last_link_id": 8,
   "nodes": [
     {
       "id": 3,
@@ -35,40 +35,6 @@
       "widgets_values": []
     },
     {
-      "id": 1,
-      "type": "BagelModelLoader",
-      "pos": [
-        50,
-        80
-      ],
-      "size": [
-        315,
-        106
-      ],
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "model",
-          "name": "model",
-          "type": "BAGEL_MODEL",
-          "links": [
-            4
-          ]
-        }
-      ],
-      "properties": {
-        "aux_id": "neverbiasu/ComfyUI-Bagel",
-        "ver": "4bb49e5232604e4838463f130b3ba7026e428c1d",
-        "Node name for S&R": "BagelModelLoader"
-      },
-      "widgets_values": [
-        "ByteDance-Seed/BAGEL-7B-MoT"
-      ]
-    },
-    {
       "id": 5,
       "type": "BagelTextToImage",
       "pos": [
@@ -87,7 +53,7 @@
           "label": "model",
           "name": "model",
           "type": "BAGEL_MODEL",
-          "link": 4
+          "link": 8
         }
       ],
       "outputs": [
@@ -115,7 +81,7 @@
       },
       "widgets_values": [
         "A female cosplayer portraying an ethereal fairy or elf, wearing a flowing dress made of delicate fabrics in soft, mystical colors like emerald green and silver. She has pointed ears, a gentle, enchanting expression, and her outfit is adorned with sparkling jewels and intricate patterns. The background is a magical forest with glowing plants, mystical creatures, and a serene atmosphere.",
-        843396,
+        495324,
         "randomize",
         "1:1",
         4,
@@ -169,19 +135,45 @@
         "Node name for S&R": "ShowText|pysssss"
       },
       "widgets_values": [
-        "<think>\nAlright, let's bring this vision to life. First, the subject is a female cosplayer dressed as an ethereal fairy or elf. She should have a flowing dress made of delicate fabrics in soft, mystical colors like emerald green and silver. The fabric should appear light and airy, with intricate patterns that shimmer and catch the light. Her pointed ears are a key feature, adding to the elf-like appearance. Her expression should be gentle and enchanting, with a soft gaze that conveys a sense of wonder and magic. The outfit should be adorned with sparkling jewels, perhaps in shades of silver and emerald, adding to the mystical and otherworldly feel. The background is a magical forest, with glowing plants that emit a soft, ethereal light. There might be mystical creatures like fairies, butterflies, or small mythical beings fluttering around, enhancing the enchanting atmosphere. The overall mood should be serene and mystical, with a focus on creating a sense of wonder and fantasy. The lighting should be soft and diffused, with a gentle glow that complements the magical theme. The composition should be balanced, with the subject positioned in a way that draws the viewer's eye to her, while the background elements add depth and context to the scene. The image should evoke a sense of fantasy and enchantment, making the viewer feel as though they've stepped into a magical realm.\n</think>"
+        "<think>\nAlright, let's bring this vision to life. First, the subject is a female cosplayer dressed as an ethereal fairy or elf. Her outfit should be a flowing dress made of delicate fabrics in soft, mystical colors like emerald green and silver. The fabric should have a shimmering quality, perhaps with a slight iridescence to evoke a magical aura. The dress should be adorned with sparkling jewels and intricate patterns, adding to the enchanting feel. Her pointed ears are a key feature, signifying her elf-like or fairy nature. Her expression should be gentle and enchanting, with a soft gaze that invites wonder. The background is a magical forest, filled with glowing plants that emit a soft, ethereal light. There should be mystical creatures like fairies, small winged beings, or even a dragonfly to enhance the fantastical atmosphere. The lighting should be soft and diffused, creating a serene and dreamlike ambiance. The overall mood should be mystical and enchanting, with a focus on the beauty and otherworldliness of the scene.\n</think>"
+      ]
+    },
+    {
+      "id": 7,
+      "type": "BagelModelLoader",
+      "pos": [
+        50,
+        80
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "label": "model",
+          "name": "model",
+          "type": "BAGEL_MODEL",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "neverbiasu/ComfyUI-Bagel",
+        "ver": "7c8172cd6a319dbd7b120e2a51b2d597550af7d2",
+        "Node name for S&R": "BagelModelLoader"
+      },
+      "widgets_values": [
+        "DFloat11/BAGEL-7B-MoT-DF11"
       ]
     }
   ],
   "links": [
-    [
-      4,
-      1,
-      0,
-      5,
-      0,
-      "BAGEL_MODEL"
-    ],
     [
       5,
       5,
@@ -197,16 +189,24 @@
       4,
       0,
       "STRING"
+    ],
+    [
+      8,
+      7,
+      0,
+      5,
+      0,
+      "BAGEL_MODEL"
     ]
   ],
   "groups": [],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.8769226950000005,
+      "scale": 0.7972024500000007,
       "offset": [
-        -213.3995004207333,
-        -311.7939442906061
+        294.1765257087074,
+        -337.1703069744037
       ]
     },
     "frontendVersion": "1.17.11",
