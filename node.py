@@ -407,7 +407,7 @@ class BagelModelLoader:
                 }
                 print(f"Successfully loaded BAGEL DF11 model from {local_model_dir}")
                 return (model_dict,)
-            else:
+            elif is_standard_model:
                 # Create BAGEL configuration
                 config = BagelConfig(
                     visual_gen=True,
