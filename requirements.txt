@@ -12,4 +12,5 @@ sentencepiece~=0.1.99
 transformers~=4.49.0
 flash_attn==2.5.8
 accelerate~=0.34.0
+bitsandbytes~=0.41.0
 dfloat11[cuda12]

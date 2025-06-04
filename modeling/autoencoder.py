@@ -14,7 +14,6 @@ from dataclasses import dataclass
 import torch
 from einops import rearrange
 from torch import Tensor, nn
-from huggingface_hub import hf_hub_download
 from safetensors.torch import load_file as load_sft
 
 
