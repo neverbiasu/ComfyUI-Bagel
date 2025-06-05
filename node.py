@@ -266,8 +266,8 @@ class BagelModelLoader:
     """
 
     SUPPORTED_MODEL_REPOS = [
-        "ByteDance-Seed/BAGEL-7B-MoT",  # Standard BAGEL - supports quantization
-        "DFloat11/BAGEL-7B-MoT-DF11",  # DFloat11 Quantized - no additional quantization
+        "ByteDance-Seed/BAGEL-7B-MoT",
+        "DFloat11/BAGEL-7B-MoT-DF11",
     ]
 
     QUANTIZATION_MODES = {
@@ -289,7 +289,6 @@ class BagelModelLoader:
                 ),
             }
         }
-        # Add quantization options for ByteDance-Seed/BAGEL-7B-MoT
         inputs["required"]["quantization_mode"] = (
             list(cls.QUANTIZATION_MODES.keys()),
             {
@@ -314,17 +313,14 @@ class BagelModelLoader:
         if "DFloat11" in model_repo_id and DFloat11Model is None:
             return "DFloat11 model selected, but DFloat11Model library is not installed or failed to import. Please install it: pip install dfloat11"
 
-        # Validate quantization mode
         if quantization_mode not in cls.QUANTIZATION_MODES:
             return f"Invalid quantization_mode: {quantization_mode}. Supported: {list(cls.QUANTIZATION_MODES.keys())}"
 
-        # DFloat11 models ignore quantization_mode (they're already quantized)
         if "DFloat11" in model_repo_id and quantization_mode != "BF16":
             print(
                 f"Warning: DFloat11 model ignores quantization_mode {quantization_mode}. Using built-in quantization."
             )
 
-        # Check for bitsandbytes availability when using quantization on ByteDance model
         if model_repo_id == "ByteDance-Seed/BAGEL-7B-MoT" and quantization_mode in [
             "NF4",
             "INT8",
@@ -344,18 +340,11 @@ class BagelModelLoader:
         """
         Load BAGEL model with unified interface supporting both standard and DFloat11 models.
         Quantization is applied only to ByteDance-Seed/BAGEL-7B-MoT model.
-
-        Args:
-            model_repo_id: Hugging Face model repository ID
-            quantization_mode: BF16=Standard, NF4=4-bit, INT8=8-bit (ignored for DFloat11)
-
-        Returns:
-            Dictionary containing all model components
         """
         try:
             is_df11_model = model_repo_id == "DFloat11/BAGEL-7B-MoT-DF11"
             is_standard_model = model_repo_id == "ByteDance-Seed/BAGEL-7B-MoT"
-            # For DFloat11, always use standard mode (it's already quantized)
+
             if is_df11_model and quantization_mode != "BF16":
                 print(
                     f"DFloat11 model detected. Ignoring quantization_mode {quantization_mode} and using built-in quantization."
@@ -372,7 +361,7 @@ class BagelModelLoader:
 
             common_vae_dir = os.path.join(comfy_models_dir, "vae")
             common_vae_file = os.path.join(common_vae_dir, "ae.safetensors")
-            # Check if model exists locally, if not, download it
+
             if not os.path.exists(local_model_dir) or not check_model_files(
                 local_model_dir, is_df11_model
             ):
@@ -392,7 +381,6 @@ class BagelModelLoader:
 
                 print(f"Successfully downloaded BAGEL model to {local_model_dir}")
 
-            # Final check that all required files exist
             if not check_model_files(local_model_dir, is_df11_model):
                 raise FileNotFoundError(
                     f"Required model files missing in {local_model_dir}"
@@ -502,7 +490,6 @@ class BagelModelLoader:
                     # Get first device with fallback to cuda:0
                     first_device = device_map.get(same_device_modules[0])
                     if first_device is None:
-                        # Fallback: find any cuda device in device_map or use cuda:0
                         for device in device_map.values():
                             if isinstance(device, str) and device.startswith("cuda"):
                                 first_device = device
@@ -510,7 +497,6 @@ class BagelModelLoader:
                         else:
                             first_device = "cuda:0"
 
-                    # Assign all same_device_modules to the first_device
                     for k in same_device_modules:
                         device_map[k] = first_device
                 model = dispatch_model(model, device_map=device_map, force_hooks=True)
@@ -561,17 +547,13 @@ class BagelModelLoader:
                         vit_config, meta=True
                     )
 
-                # Load tokenizer
                 tokenizer = Qwen2Tokenizer.from_pretrained(local_model_dir)
                 tokenizer, new_token_ids, _ = add_special_tokens(tokenizer)
 
-                # Create transforms
                 vae_transform = ImageTransform(1024, 512, 16)
                 vit_transform = ImageTransform(980, 224, 14)
 
-                # Setup device mapping for all models
                 if quantization_mode in ["NF4", "INT8"]:
-                    # For quantized models, use calculated memory limits
                     max_memory_gb = calculate_optimal_memory_gb(quantization_mode)
                     max_memory_per_gpu = f"{max_memory_gb}GiB"
                     device_map = infer_auto_device_map(
@@ -583,7 +565,6 @@ class BagelModelLoader:
                         no_split_module_classes=["Bagel", "Qwen2MoTDecoderLayer"],
                     )
                 else:
-                    # For BF16 mode, use auto device mapping without memory constraints
                     device_map = infer_auto_device_map(
                         model,
                         no_split_module_classes=["Bagel", "Qwen2MoTDecoderLayer"],
@@ -608,10 +589,8 @@ class BagelModelLoader:
                         else:
                             device_map[k] = "cuda:0"
                 else:
-                    # Get first device with fallback to cuda:0
                     first_device = device_map.get(same_device_modules[0])
                     if first_device is None:
-                        # Fallback: find any cuda device in device_map or use cuda:0
                         for device in device_map.values():
                             if isinstance(device, str) and device.startswith("cuda"):
                                 first_device = device
@@ -642,7 +621,6 @@ class BagelModelLoader:
                     ).eval()
 
                 elif quantization_mode == "NF4":
-                    # NF4 quantization
                     print("Loading model with NF4 (4-bit) quantization...")
                     bnb_quantization_config = BnbQuantizationConfig(
                         load_in_4bit=True,
@@ -659,13 +637,7 @@ class BagelModelLoader:
                     ).eval()
 
                 elif quantization_mode == "INT8":
-                    # INT8 quantization with improved memory management
                     print("Loading model with INT8 (8-bit) quantization...")
-
-                    # Clear GPU cache before quantization
-                    # if torch.cuda.is_available():
-                    #     torch.cuda.empty_cache()
-
                     bnb_quantization_config = BnbQuantizationConfig(
                         load_in_8bit=True, torch_dtype=torch.bfloat16
                     )
@@ -692,7 +664,6 @@ class BagelModelLoader:
                     new_token_ids=new_token_ids,
                 )
 
-                # Prepare model dictionary with quantization info
                 model_dict = {
                     "model": model,
                     "inferencer": inferencer,
