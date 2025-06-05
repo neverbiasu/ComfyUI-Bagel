@@ -16,14 +16,20 @@ BAGEL is an open-source multimodal foundation model with 7B active parameters (1
 - **Image Editing**: Edit existing images based on textual descriptions  
 - **Image Understanding**: Perform Q&A and analysis on images
 - **Reasoning Process Display**: Optionally display the model's reasoning process
-- **DFloat11 Quantized Model Support**: Support for DFloat11 quantized version that requires only ~22GB VRAM
+- **Advanced Quantization Support**: Multiple quantization modes (BF16, NF4, INT8) for the standard model
+- **DFloat11 Quantized Model Support**: Pre-quantized model requiring only ~22GB VRAM for single GPU setups
 
 ## Installation
 
 ### 1. Model Selection and Download
-The ComfyUI-Bagel node now supports automatic model selection via dropdown:
-- **ByteDance-Seed/BAGEL-7B-MoT**: Original standard model (~80GB VRAM recommended)
-- **DFloat11/BAGEL-7B-MoT-DF11**: Quantized model (~22GB VRAM, single 24GB GPU compatible)
+The ComfyUI-Bagel node supports automatic model selection with intelligent quantization:
+- **ByteDance-Seed/BAGEL-7B-MoT**: Standard model with multiple quantization options
+  - **BF16**: Full precision mode (~80GB VRAM recommended for multi-GPU)
+  - **NF4**: 4-bit quantization (~12-32GB VRAM, highly recommended for single GPU)
+  - **INT8**: 8-bit quantization (~22-32GB VRAM, moderate compression)
+- **DFloat11/BAGEL-7B-MoT-DF11**: Pre-quantized model (~22GB VRAM, single 24GB GPU compatible)
+
+**Memory is automatically calculated** based on your GPU specifications and selected quantization mode - no manual configuration needed!
 
 Models will be automatically downloaded to `models/bagel/` when first selected. You can also manually download them:
 
@@ -53,10 +59,17 @@ Install the required dependencies:
 pip install -r requirements.txt
 ```
 
+For advanced quantization support (NF4/INT8 modes), also install:
+```bash
+pip install bitsandbytes
+```
+
 For DFloat11 quantized model support, also install:
 ```bash
 pip install dfloat11
 ```
+
+**Note**: `bitsandbytes` is required for NF4 and INT8 quantization modes on the standard ByteDance model. DFloat11 model works without additional quantization libraries.
 
 ### 3. Restart ComfyUI
 Restart ComfyUI to load the new nodes.
@@ -103,16 +116,15 @@ Contributions are welcome! Please submit issue reports and feature requests. If 
 
 ## FAQ
 
-### 1. VRAM Requirements
-The official recommendation for generating a 1024×1024 image is over 80GB GPU memory. However, multi-GPU setups can distribute the memory load. For example:
-- **Single GPU**: A100 (40GB) takes approximately 340-380 seconds per image.
-- **Multi-GPU**: 3 RTX3090 GPUs (24GB each) complete the task in about 1 minute.
-- **Compressed Model**: Using the DFloat11 version requires only 22GB VRAM and can run on a single 24GB GPU, with peak memory usage around 21.76GB (A100) and generation time of approximately 58 seconds.
+## FAQ
 
-For more details, visit the [GitHub issue](https://github.com/ByteDance-Seed/Bagel/issues/4).
+### 1. VRAM Requirements & Optimization
+With the new automatic memory management and quantization options:
+- **24GB GPU (Single)**: Use NF4 quantization or DFloat11 model for optimal performance
+- **12-16GB GPU**: Use NF4 quantization for best results (may require some CPU offloading)
+- **8GB GPU**: Limited support with NF4 + aggressive offloading
+- **Multi-GPU**: BF16 mode automatically distributes load across available GPUs
+- **Memory is calculated automatically** based on your hardware - no manual configuration needed!
 
-### 2. Quantized Version
-A quantized version of BAGEL is currently under development, which aims to reduce VRAM requirements further.
-
-### 3. NameError: 'Qwen2Config' is not defined
+### 2. NameError: 'Qwen2Config' is not defined
 This issue is likely related to environment or dependency problems. For more information, refer to [this GitHub issue](https://github.com/neverbiasu/ComfyUI-BAGEL/issues/7).

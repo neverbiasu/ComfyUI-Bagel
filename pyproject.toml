@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-bagel"
 description = "A ComfyUI extention for BAGEL(Unified Model for Multimodal Understanding and Generation)"
-version = "1.0.3"
+version = "1.0.4"
 license = {file = "LICENSE"}
 dependencies = ["decord==0.6.0", "einops==0.8.1", "huggingface_hub==0.29.1", "matplotlib==3.7.0", "opencv-python==4.7.0.72", "pyarrow==11.0.0", "PyYAML==6.0.2", "Requests==2.32.3", "safetensors==0.4.5", "scipy==1.10.1", "sentencepiece==0.1.99", "transformers==4.49.0", "flash_attn==2.5.8", "accelerate>=0.34.0"]
 
