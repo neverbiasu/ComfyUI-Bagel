@@ -200,6 +200,63 @@ def tensor_to_pil(tensor: torch.Tensor) -> Image.Image:
     return Image.fromarray(img_array)
 
 
+def calculate_optimal_memory_gb(quantization_mode: str) -> float:
+    """
+    Calculate optimal memory usage based on available GPU memory and quantization mode.
+
+    Args:
+        quantization_mode: Quantization mode (1=BF16, 2=NF4, 3=INT8)
+
+    Returns:
+        Optimal memory usage in GB per GPU
+    """
+    try:
+        if not torch.cuda.is_available():
+            return 8.0  # CPU fallback
+
+        # Get total GPU memory
+        total_memory_gb = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+
+        # Reserve memory for system and other processes
+        if quantization_mode == "BF16":  # BF16
+            # Full precision needs more headroom
+            reserved_ratio = 0.15  # Reserve 15%
+            optimal_ratio = 0.8  # Use 80% of remaining
+        elif quantization_mode == "NF4":  # NF4
+            # 4-bit quantization is very memory efficient
+            reserved_ratio = 0.1  # Reserve 10%
+            optimal_ratio = 0.85  # Use 85% of remaining
+        elif quantization_mode == "INT8":  # INT8
+            # 8-bit quantization is moderately efficient
+            reserved_ratio = 0.1  # Reserve 10%
+            optimal_ratio = 0.82  # Use 82% of remaining
+        else:
+            # Default conservative settings
+            reserved_ratio = 0.15
+            optimal_ratio = 0.75
+
+        available_memory = total_memory_gb * (1 - reserved_ratio)
+        optimal_memory = available_memory * optimal_ratio
+
+        # Set reasonable bounds
+        min_memory = 8.0
+        max_memory = min(80.0, total_memory_gb * 0.9)  # Never exceed 90% of total
+
+        optimal_memory = max(min_memory, min(optimal_memory, max_memory))
+
+        mode_name = quantization_mode
+
+        print(
+            f"GPU Memory: {total_memory_gb:.1f}GB total, using {optimal_memory:.1f}GB for {mode_name} quantization"
+        )
+
+        return optimal_memory
+
+    except Exception as e:
+        print(f"Error calculating optimal memory, using default: {e}")
+        return 24.0
+
+
 class BagelModelLoader:
     """
     Unified BAGEL Model Loader with Dynamic Quantization Support
@@ -240,27 +297,6 @@ class BagelModelLoader:
                 "tooltip": "Quantization: BF16=Standard, NF4=4-bit, INT8=8-bit (Only for ByteDance model)",
             },
         )
-
-        # Optional advanced settings
-        inputs["optional"] = {
-            "max_memory_gb": (
-                "FLOAT",
-                {
-                    "default": 24.0,
-                    "min": 8.0,
-                    "max": 80.0,
-                    "step": 1.0,
-                    "tooltip": "Maximum VRAM usage per GPU in GB (for quantized models)",
-                },
-            ),
-            "offload_folder": (
-                "STRING",
-                {
-                    "default": "offload",
-                    "tooltip": "Folder for CPU offloading (relative to ComfyUI root)",
-                },
-            ),
-        }
 
         return inputs
 
@@ -304,8 +340,6 @@ class BagelModelLoader:
         self,
         model_repo_id: str,
         quantization_mode: str = "BF16",
-        max_memory_gb: float = 24.0,
-        offload_folder: str = "offload",
     ) -> Tuple[Dict[str, Any]]:
         """
         Load BAGEL model with unified interface supporting both standard and DFloat11 models.
@@ -313,9 +347,7 @@ class BagelModelLoader:
 
         Args:
             model_repo_id: Hugging Face model repository ID
-            quantization_mode: 1=Standard, 2=NF4, 3=INT8 (ignored for DFloat11)
-            max_memory_gb: Maximum VRAM per GPU in GB
-            offload_folder: Folder for CPU offloading
+            quantization_mode: BF16=Standard, NF4=4-bit, INT8=8-bit (ignored for DFloat11)
 
         Returns:
             Dictionary containing all model components
@@ -443,7 +475,7 @@ class BagelModelLoader:
                 )
                 device_map = infer_auto_device_map(
                     model,
-                    max_memory={0: "40GiB"},
+                    max_memory={0: calculate_optimal_memory_gb("BF16")},
                     no_split_module_classes=[
                         "Bagel",
                         "Qwen2MoTDecoderLayer",
@@ -467,10 +499,20 @@ class BagelModelLoader:
                         else:
                             device_map[k] = "cuda:0"
                 else:
+                    # Get first device with fallback to cuda:0
                     first_device = device_map.get(same_device_modules[0])
+                    if first_device is None:
+                        # Fallback: find any cuda device in device_map or use cuda:0
+                        for device in device_map.values():
+                            if isinstance(device, str) and device.startswith("cuda"):
+                                first_device = device
+                                break
+                        else:
+                            first_device = "cuda:0"
+
+                    # Assign all same_device_modules to the first_device
                     for k in same_device_modules:
-                        if k in device_map:
-                            device_map[k] = first_device
+                        device_map[k] = first_device
                 model = dispatch_model(model, device_map=device_map, force_hooks=True)
                 model = model.eval()
                 inferencer = InterleaveInferencer(
@@ -529,6 +571,7 @@ class BagelModelLoader:
 
                 # Setup device mapping for quantized models
                 if quantization_mode in ["NF4", "INT8"]:
+                    max_memory_gb = calculate_optimal_memory_gb(quantization_mode)
                     max_memory_per_gpu = f"{max_memory_gb}GiB"
                     device_map = infer_auto_device_map(
                         model,
@@ -538,8 +581,6 @@ class BagelModelLoader:
                         },
                         no_split_module_classes=["Bagel", "Qwen2MoTDecoderLayer"],
                     )
-
-                    # Ensure same device for critical modules
                     same_device_modules = [
                         "language_model.model.embed_tokens",
                         "time_embedder",
@@ -558,9 +599,23 @@ class BagelModelLoader:
                             else:
                                 device_map[k] = "cuda:0"
                     else:
+                        # Get first device with fallback to cuda:0
                         first_device = device_map.get(same_device_modules[0])
+                        if first_device is None:
+                            # Fallback: find any cuda device in device_map or use cuda:0
+                            for device in device_map.values():
+                                if isinstance(device, str) and device.startswith(
+                                    "cuda"
+                                ):
+                                    first_device = device
+                                    break
+                            else:
+                                first_device = "cuda:0"
+
                         for k in same_device_modules:
                             if k in device_map:
+                                device_map[k] = first_device
+                            else:
                                 device_map[k] = first_device
 
                 # Load model based on quantization mode
@@ -572,7 +627,9 @@ class BagelModelLoader:
                     model = load_checkpoint_and_dispatch(
                         model,
                         checkpoint=checkpoint_path,
-                        device_map="auto",
+                        device_map=device_map,
+                        offload_buffers=True,
+                        offload_folder="offload",
                         dtype=torch.bfloat16,
                         force_hooks=True,
                     ).eval()
@@ -591,7 +648,7 @@ class BagelModelLoader:
                         weights_location=checkpoint_path,
                         bnb_quantization_config=bnb_quantization_config,
                         device_map=device_map,
-                        offload_folder=offload_folder,
+                        offload_folder="offload",
                     ).eval()
 
                 elif quantization_mode == "INT8":
@@ -599,55 +656,19 @@ class BagelModelLoader:
                     print("Loading model with INT8 (8-bit) quantization...")
 
                     # Clear GPU cache before quantization
-                    if torch.cuda.is_available():
-                        torch.cuda.empty_cache()
-
-                    # Use more conservative device mapping for INT8
-                    reduced_memory_gb = max(
-                        8.0, max_memory_gb * 0.7
-                    )  # Use 70% of max memory
-                    reduced_device_map = infer_auto_device_map(
-                        model,
-                        max_memory={
-                            i: f"{reduced_memory_gb}GiB"
-                            for i in range(torch.cuda.device_count())
-                        },
-                        no_split_module_classes=["Bagel", "Qwen2MoTDecoderLayer"],
-                    )
-
-                    # Apply same device constraints
-                    if torch.cuda.device_count() == 1:
-                        first_device = reduced_device_map.get(
-                            same_device_modules[0], "cuda:0"
-                        )
-                        for k in same_device_modules:
-                            if k in reduced_device_map:
-                                reduced_device_map[k] = first_device
-                            else:
-                                reduced_device_map[k] = "cuda:0"
-                    else:
-                        first_device = reduced_device_map.get(same_device_modules[0])
-                        for k in same_device_modules:
-                            if k in reduced_device_map:
-                                reduced_device_map[k] = first_device
+                    # if torch.cuda.is_available():
+                    #     torch.cuda.empty_cache()
 
                     bnb_quantization_config = BnbQuantizationConfig(
-                        load_in_8bit=True,
-                        torch_dtype=torch.bfloat16,
-                        llm_int8_threshold=6.0,  # Higher threshold for better stability
-                        llm_int8_skip_modules=[
-                            "vit_model",
-                            "vae2llm",
-                            "llm2vae",
-                        ],  # Skip vision modules
+                        load_in_8bit=True, torch_dtype=torch.bfloat16
                     )
 
                     model = load_and_quantize_model(
                         model,
                         weights_location=checkpoint_path,
                         bnb_quantization_config=bnb_quantization_config,
-                        device_map=reduced_device_map,
-                        offload_folder=offload_folder,
+                        device_map=device_map,
+                        offload_folder="offload",
                     ).eval()
 
                 else:
