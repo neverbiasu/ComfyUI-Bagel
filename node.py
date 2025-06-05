@@ -461,9 +461,14 @@ class BagelModelLoader:
                     bfloat16_model=model,
                     device="cpu",
                 )
+
+                # Create offload directory for model dispatch
+                offload_dir = os.path.join(local_model_dir, "offload")
+                os.makedirs(offload_dir, exist_ok=True)
+
                 device_map = infer_auto_device_map(
                     model,
-                    max_memory={0: calculate_optimal_memory_gb("BF16")},
+                    max_memory={0: f"{calculate_optimal_memory_gb('BF16')}GiB"},
                     no_split_module_classes=[
                         "Bagel",
                         "Qwen2MoTDecoderLayer",
@@ -499,7 +504,13 @@ class BagelModelLoader:
 
                     for k in same_device_modules:
                         device_map[k] = first_device
-                model = dispatch_model(model, device_map=device_map, force_hooks=True)
+
+                model = dispatch_model(
+                    model,
+                    device_map=device_map,
+                    offload_dir=offload_dir,
+                    force_hooks=True,
+                )
                 model = model.eval()
                 inferencer = InterleaveInferencer(
                     model=model,
