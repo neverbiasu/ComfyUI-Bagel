@@ -75,13 +75,14 @@
         }
       ],
       "properties": {
-        "aux_id": "neverbiasu/ComfyUI-Bagel",
+        "cnr_id": "comfyui-bagel",
         "ver": "70a0dddad5c0d416faffd72549909b693baa0113",
-        "Node name for S&R": "BagelTextToImage"
+        "Node name for S&R": "BagelTextToImage",
+        "aux_id": "neverbiasu/ComfyUI-Bagel"
       },
       "widgets_values": [
         "A female cosplayer portraying an ethereal fairy or elf, wearing a flowing dress made of delicate fabrics in soft, mystical colors like emerald green and silver. She has pointed ears, a gentle, enchanting expression, and her outfit is adorned with sparkling jewels and intricate patterns. The background is a magical forest with glowing plants, mystical creatures, and a serene atmosphere.",
-        495324,
+        217284,
         "randomize",
         "1:1",
         4,
@@ -147,7 +148,7 @@
       ],
       "size": [
         315,
-        58
+        82
       ],
       "flags": {},
       "order": 0,
@@ -164,12 +165,14 @@
         }
       ],
       "properties": {
-        "aux_id": "neverbiasu/ComfyUI-Bagel",
+        "cnr_id": "comfyui-bagel",
         "ver": "7c8172cd6a319dbd7b120e2a51b2d597550af7d2",
-        "Node name for S&R": "BagelModelLoader"
+        "Node name for S&R": "BagelModelLoader",
+        "aux_id": "neverbiasu/ComfyUI-Bagel"
       },
       "widgets_values": [
-        "DFloat11/BAGEL-7B-MoT-DF11"
+        "DFloat11/BAGEL-7B-MoT-DF11",
+        "BF16"
       ]
     }
   ],
@@ -203,10 +206,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.7972024500000007,
+      "scale": 0.9646149645000006,
       "offset": [
-        294.1765257087074,
-        -337.1703069744037
+        591.6707227101431,
+        254.9799118615385
       ]
     },
     "frontendVersion": "1.17.11",

@@ -1,8 +1,8 @@
 {
   "id": "3fa96181-e113-4145-ab50-238e8d4aa26b",
   "revision": 0,
-  "last_node_id": 15,
-  "last_link_id": 14,
+  "last_node_id": 16,
+  "last_link_id": 15,
   "nodes": [
     {
       "id": 13,
@@ -33,76 +33,6 @@
         "Node name for S&R": "PreviewImage"
       },
       "widgets_values": []
-    },
-    {
-      "id": 11,
-      "type": "BagelImageEdit",
-      "pos": [
-        415,
-        80
-      ],
-      "size": [
-        400,
-        372
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [
-        {
-          "label": "model",
-          "name": "model",
-          "type": "BAGEL_MODEL",
-          "link": 14
-        },
-        {
-          "label": "image",
-          "name": "image",
-          "type": "IMAGE",
-          "link": 11
-        }
-      ],
-      "outputs": [
-        {
-          "label": "image",
-          "name": "image",
-          "type": "IMAGE",
-          "links": [
-            12
-          ]
-        },
-        {
-          "label": "thinking",
-          "name": "thinking",
-          "type": "STRING",
-          "links": [
-            13
-          ]
-        }
-      ],
-      "properties": {
-        "aux_id": "neverbiasu/ComfyUI-Bagel",
-        "ver": "4bb49e5232604e4838463f130b3ba7026e428c1d",
-        "Node name for S&R": "BagelImageEdit"
-      },
-      "widgets_values": [
-        "She boards a modern subway, quietly reading a folded newspaper, wearing the same clothes.",
-        414307,
-        "fixed",
-        4,
-        2,
-        50,
-        true,
-        0,
-        3,
-        1,
-        "text_channel",
-        0.3,
-        [
-          false,
-          true
-        ]
-      ]
     },
     {
       "id": 12,
@@ -182,11 +112,82 @@
         "Node name for S&R": "ShowText|pysssss"
       },
       "widgets_values": [
-        "<think>\nThe user wants the image to depict the same person in a modern subway setting, reading a newspaper. The red outfit and poodle pin should remain consistent, while the background changes to a subway environment with a bench and subway signage. The pose should reflect quiet reading.\n</think>"
+        "<think>\nThe user wants the image to depict the same person in a modern subway setting, reading a newspaper. The red outfit and poodle pin should remain consistent, but the background should change to a subway environment with modern elements like subway seating and signage. The pose should reflect reading, with the newspaper held in hand.\n</think>"
       ]
     },
     {
-      "id": 15,
+      "id": 11,
+      "type": "BagelImageEdit",
+      "pos": [
+        415,
+        80
+      ],
+      "size": [
+        400,
+        372
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "model",
+          "name": "model",
+          "type": "BAGEL_MODEL",
+          "link": 15
+        },
+        {
+          "label": "image",
+          "name": "image",
+          "type": "IMAGE",
+          "link": 11
+        }
+      ],
+      "outputs": [
+        {
+          "label": "image",
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            12
+          ]
+        },
+        {
+          "label": "thinking",
+          "name": "thinking",
+          "type": "STRING",
+          "links": [
+            13
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-bagel",
+        "ver": "4bb49e5232604e4838463f130b3ba7026e428c1d",
+        "Node name for S&R": "BagelImageEdit",
+        "aux_id": "neverbiasu/ComfyUI-Bagel"
+      },
+      "widgets_values": [
+        "She boards a modern subway, quietly reading a folded newspaper, wearing the same clothes.",
+        414307,
+        "fixed",
+        4,
+        2,
+        50,
+        true,
+        0.1,
+        3,
+        1,
+        "text_channel",
+        0.3,
+        [
+          false,
+          true
+        ]
+      ]
+    },
+    {
+      "id": 16,
       "type": "BagelModelLoader",
       "pos": [
         50,
@@ -194,7 +195,7 @@
       ],
       "size": [
         315,
-        58
+        82
       ],
       "flags": {},
       "order": 1,
@@ -206,17 +207,18 @@
           "name": "model",
           "type": "BAGEL_MODEL",
           "links": [
-            14
+            15
           ]
         }
       ],
       "properties": {
-        "aux_id": "neverbiasu/ComfyUI-Bagel",
-        "ver": "7c8172cd6a319dbd7b120e2a51b2d597550af7d2",
+        "cnr_id": "comfyui-bagel",
+        "ver": "e6b8df01db973b9b8fee66a30ade99fe791b16a7",
         "Node name for S&R": "BagelModelLoader"
       },
       "widgets_values": [
-        "DFloat11/BAGEL-7B-MoT-DF11"
+        "ByteDance-Seed/BAGEL-7B-MoT",
+        "BF16"
       ]
     }
   ],
@@ -246,8 +248,8 @@
       "STRING"
     ],
     [
-      14,
       15,
+      16,
       0,
       11,
       0,
@@ -258,10 +260,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.7972024500000005,
+      "scale": 1.0152559799477068,
       "offset": [
-        314.6055329170149,
-        -0.926144800855802
+        408.1530290065159,
+        41.71855391936305
       ]
     },
     "frontendVersion": "1.17.11",

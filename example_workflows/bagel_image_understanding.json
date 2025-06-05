@@ -46,40 +46,6 @@
       ]
     },
     {
-      "id": 1,
-      "type": "BagelModelLoader",
-      "pos": [
-        100,
-        130
-      ],
-      "size": [
-        315,
-        58
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [
-        {
-          "label": "model",
-          "name": "model",
-          "type": "BAGEL_MODEL",
-          "links": [
-            1
-          ]
-        }
-      ],
-      "properties": {
-        "aux_id": "neverbiasu/ComfyUI-Bagel",
-        "ver": "4bb49e5232604e4838463f130b3ba7026e428c1d",
-        "Node name for S&R": "BagelModelLoader"
-      },
-      "widgets_values": [
-        "DFloat11/BAGEL-7B-MoT-DF11"
-      ]
-    },
-    {
       "id": 4,
       "type": "ShowText|pysssss",
       "pos": [
@@ -158,9 +124,10 @@
         }
       ],
       "properties": {
-        "aux_id": "neverbiasu/ComfyUI-Bagel",
+        "cnr_id": "comfyui-bagel",
         "ver": "4bb49e5232604e4838463f130b3ba7026e428c1d",
-        "Node name for S&R": "BagelImageUnderstanding"
+        "Node name for S&R": "BagelImageUnderstanding",
+        "aux_id": "neverbiasu/ComfyUI-Bagel"
       },
       "widgets_values": [
         "Can someone explain what's funny about this meme??",
@@ -172,6 +139,42 @@
           false,
           true
         ]
+      ]
+    },
+    {
+      "id": 1,
+      "type": "BagelModelLoader",
+      "pos": [
+        100,
+        130
+      ],
+      "size": [
+        315,
+        82
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "label": "model",
+          "name": "model",
+          "type": "BAGEL_MODEL",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-bagel",
+        "ver": "4bb49e5232604e4838463f130b3ba7026e428c1d",
+        "Node name for S&R": "BagelModelLoader",
+        "aux_id": "neverbiasu/ComfyUI-Bagel"
+      },
+      "widgets_values": [
+        "DFloat11/BAGEL-7B-MoT-DF11",
+        "BF16"
       ]
     }
   ],
@@ -205,10 +208,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.8769226950000005,
+      "scale": 0.6588450000000002,
       "offset": [
-        199.3271554533947,
-        10.543933112705858
+        863.798180907497,
+        313.1051537159724
       ]
     },
     "frontendVersion": "1.17.11",
