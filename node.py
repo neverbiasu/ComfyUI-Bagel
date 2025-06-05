@@ -563,14 +563,15 @@ class BagelModelLoader:
 
                 # Load tokenizer
                 tokenizer = Qwen2Tokenizer.from_pretrained(local_model_dir)
-                tokenizer, new_token_ids, _ = add_special_tokens(
-                    tokenizer
-                )  # Create transforms
+                tokenizer, new_token_ids, _ = add_special_tokens(tokenizer)
+
+                # Create transforms
                 vae_transform = ImageTransform(1024, 512, 16)
                 vit_transform = ImageTransform(980, 224, 14)
 
-                # Setup device mapping for quantized models
+                # Setup device mapping for all models
                 if quantization_mode in ["NF4", "INT8"]:
+                    # For quantized models, use calculated memory limits
                     max_memory_gb = calculate_optimal_memory_gb(quantization_mode)
                     max_memory_per_gpu = f"{max_memory_gb}GiB"
                     device_map = infer_auto_device_map(
@@ -581,42 +582,48 @@ class BagelModelLoader:
                         },
                         no_split_module_classes=["Bagel", "Qwen2MoTDecoderLayer"],
                     )
-                    same_device_modules = [
-                        "language_model.model.embed_tokens",
-                        "time_embedder",
-                        "latent_pos_embed",
-                        "vae2llm",
-                        "llm2vae",
-                        "connector",
-                        "vit_pos_embed",
-                    ]
+                else:
+                    # For BF16 mode, use auto device mapping without memory constraints
+                    device_map = infer_auto_device_map(
+                        model,
+                        no_split_module_classes=["Bagel", "Qwen2MoTDecoderLayer"],
+                    )
 
-                    if torch.cuda.device_count() == 1:
-                        first_device = device_map.get(same_device_modules[0], "cuda:0")
-                        for k in same_device_modules:
-                            if k in device_map:
-                                device_map[k] = first_device
-                            else:
-                                device_map[k] = "cuda:0"
-                    else:
-                        # Get first device with fallback to cuda:0
-                        first_device = device_map.get(same_device_modules[0])
-                        if first_device is None:
-                            # Fallback: find any cuda device in device_map or use cuda:0
-                            for device in device_map.values():
-                                if isinstance(device, str) and device.startswith(
-                                    "cuda"
-                                ):
-                                    first_device = device
-                                    break
-                            else:
-                                first_device = "cuda:0"
+                # Ensure same device placement for critical modules
+                same_device_modules = [
+                    "language_model.model.embed_tokens",
+                    "time_embedder",
+                    "latent_pos_embed",
+                    "vae2llm",
+                    "llm2vae",
+                    "connector",
+                    "vit_pos_embed",
+                ]
 
-                        for k in same_device_modules:
-                            if k in device_map:
-                                device_map[k] = first_device
-                            else:
-                                device_map[k] = first_device
+                if torch.cuda.device_count() == 1:
+                    first_device = device_map.get(same_device_modules[0], "cuda:0")
+                    for k in same_device_modules:
+                        if k in device_map:
+                            device_map[k] = first_device
+                        else:
+                            device_map[k] = "cuda:0"
+                else:
+                    # Get first device with fallback to cuda:0
+                    first_device = device_map.get(same_device_modules[0])
+                    if first_device is None:
+                        # Fallback: find any cuda device in device_map or use cuda:0
+                        for device in device_map.values():
+                            if isinstance(device, str) and device.startswith("cuda"):
+                                first_device = device
+                                break
+                        else:
+                            first_device = "cuda:0"
+
+                    for k in same_device_modules:
+                        if k in device_map:
+                            device_map[k] = first_device
+                        else:
+                            device_map[k] = first_device
 
                 # Load model based on quantization mode
                 checkpoint_path = os.path.join(local_model_dir, "ema.safetensors")
@@ -662,7 +669,6 @@ class BagelModelLoader:
                     bnb_quantization_config = BnbQuantizationConfig(
                         load_in_8bit=True, torch_dtype=torch.bfloat16
                     )
-
                     model = load_and_quantize_model(
                         model,
                         weights_location=checkpoint_path,
