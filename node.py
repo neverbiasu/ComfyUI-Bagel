@@ -205,7 +205,7 @@ def calculate_optimal_memory_gb(quantization_mode: str) -> float:
     Calculate optimal memory usage based on available GPU memory and quantization mode.
 
     Args:
-        quantization_mode: Quantization mode (1=BF16, 2=NF4, 3=INT8)
+        quantization_mode: Quantization mode (1=BF16, 2=NF4, 3=INT8, 4=FP8)
 
     Returns:
         Optimal memory usage in GB per GPU
@@ -226,7 +226,7 @@ def calculate_optimal_memory_gb(quantization_mode: str) -> float:
             # 4-bit quantization is very memory efficient
             reserved_ratio = 0.1  # Reserve 10%
             optimal_ratio = 0.85  # Use 85% of remaining
-        elif quantization_mode == "INT8":  # INT8
+        elif quantization_mode == "INT8" or quantization_mode == "FP8":  # INT8
             # 8-bit quantization is moderately efficient
             reserved_ratio = 0.1  # Reserve 10%
             optimal_ratio = 0.82  # Use 82% of remaining
@@ -274,6 +274,7 @@ class BagelModelLoader:
         "BF16": "Standard (FP16/BF16)",
         "NF4": "NF4 (4-bit Quantization)",
         "INT8": "INT8 (8-bit Quantization)",
+        "FP8": "FP8 (8-bit float)",
     }
 
     @classmethod
@@ -293,7 +294,7 @@ class BagelModelLoader:
             list(cls.QUANTIZATION_MODES.keys()),
             {
                 "default": "BF16",
-                "tooltip": "Quantization: BF16=Standard, NF4=4-bit, INT8=8-bit (Only for ByteDance model)",
+                "tooltip": "Quantization: BF16=Standard, NF4=4-bit, INT8=8-bit, FP8=float8 (Only for ByteDance model)",
             },
         )
 
@@ -564,8 +565,10 @@ class BagelModelLoader:
                 vae_transform = ImageTransform(1024, 512, 16)
                 vit_transform = ImageTransform(980, 224, 14)
 
-                if quantization_mode in ["NF4", "INT8"]:
+                if quantization_mode in ["NF4", "INT8", "FP8"]:
                     max_memory_gb = calculate_optimal_memory_gb(quantization_mode)
+                    if quantization_mode == "FP8":
+                        max_memory_gb *= 4 # Optimization doesn't know about quantization
                     max_memory_per_gpu = f"{max_memory_gb}GiB"
                     device_map = infer_auto_device_map(
                         model,
@@ -658,6 +661,19 @@ class BagelModelLoader:
                         bnb_quantization_config=bnb_quantization_config,
                         device_map=device_map,
                         offload_folder="offload",
+                    ).eval()
+
+                elif quantization_mode == "FP8":
+                    # 8-bit float
+                    print("Loading model in FP8 mode...")
+                    model = load_checkpoint_and_dispatch(
+                        model,
+                        checkpoint=checkpoint_path,
+                        device_map=device_map,
+                        offload_buffers=True,
+                        offload_folder="offload",
+                        dtype=torch.float8_e4m3fn,
+                        force_hooks=True,
                     ).eval()
 
                 else:
